@@ -5,7 +5,7 @@ def tokenise(expression: str, special_tokens="()+-*/") -> List[str]:
     """Returns a list of tokens"""
     # In the current grammar every special token is exactly 1 character long, and numbers can be any length
     # Read through string from left to right, building up tokens
-    expression = expression.strip()  # We can ignore all white space
+    expression = expression.replace(" ", "")  # We can ignore all white space
 
     tokens = []
     running_string = ""  # Will store tokens longer than 1 char
@@ -27,8 +27,56 @@ def tokenise(expression: str, special_tokens="()+-*/") -> List[str]:
     return tokens
 
 
-def parse(tokens: List[str]):
-    pass
+def parse(tokens: List[str], operations="+-*/"):
+    # Walk through the list of tokens into expressions, such as:
+    # ["+", "3" ["+" ["1", "2"]]] for 1 + 2 + 3
+    # Step 1, handle brackets
+    # Error checking, count brackets
+    if tokens.count("(") != tokens.count(")"):
+        return None
+
+    stack = []
+
+    current_operation = ""
+    while len(tokens) > 0:
+        token = tokens.pop(0)
+        if token == ")":
+            return None  # Can't encounter a close before an open
+
+        if token == "(":
+            sub_tokens = []
+            bracket_depth = 1
+            while bracket_depth > 0:
+                sub_token = tokens.pop(0)
+                if sub_token == "(":
+                    bracket_depth += 1
+                if sub_token == ")":
+                    bracket_depth -= 1
+                sub_tokens.append(sub_token)
+            # This will have an extra ")" hanging at the end
+            sub_tokens.pop()
+            sub_parse_tree = parse(sub_tokens)  # Recursivly parse
+            if sub_parse_tree is None:
+                return None
+            # This is now one token
+            stack.append(sub_parse_tree)
+        elif token in operations:
+            # Causes this to be handled after the next token
+            current_operation = token
+            continue
+        else:
+            stack.append(token)
+
+        if current_operation != "":
+            if len(stack) < 2:
+                return None  # Error state, invalid function
+            a = stack.pop()
+            b = stack.pop()
+            stack.append([current_operation, b, a])
+            current_operation = ""
+    if len(stack) > 1:
+        return None  # Dangling operation, invalid expression, such as "(1 + 2) 3"
+    return stack[0]  # The stack should have 1 item in it
 
 
 def evaluate_parse_tree(parse_tree) -> Optional[int]:
@@ -41,6 +89,10 @@ def evaluate(expression: str) -> Optional[int]:
     # tokenisation, parsing, and evaluation
     tokens = tokenise(expression)
     parse_tree = parse(tokens)
+    # An error occurred in parsing
+    if parse_tree is None:
+        return None
+
     return evaluate_parse_tree(parse_tree)
 
 
@@ -57,7 +109,7 @@ if __name__ == "__main__":
     # Simple comparative testing
     for test in tests:
         result = evaluate(test)
-        if result == tests[test]:  # Does not work with None
+        if result == tests[test]:
             print(f"GOOD {test}")
         else:
             print(f"BAD  {test}, {result}")
