@@ -1,6 +1,14 @@
 from typing import Optional, List
 
 
+methods = {
+    "+": lambda a, b: a + b,
+    "-": lambda a, b: a - b,
+    "/": lambda a, b: a / b,
+    "*": lambda a, b: a * b,
+}
+
+
 def tokenise(expression: str, special_tokens="()+-*/") -> List[str]:
     """Returns a list of tokens"""
     # In the current grammar every special token is exactly 1 character long, and numbers can be any length
@@ -80,7 +88,16 @@ def parse(tokens: List[str], operations="+-*/"):
 
 
 def evaluate_parse_tree(parse_tree) -> Optional[int]:
-    pass
+    # Recursive function to parse
+    # Two cases can occur. Either it is a list of 3 items, or 1 string
+    if type(parse_tree) is str:
+        return int(parse_tree)
+
+    # In this case it is a list of three items where the first is the operation
+    return methods[parse_tree[0]](
+        evaluate_parse_tree(parse_tree[1]),
+        evaluate_parse_tree(parse_tree[2])
+    )
 
 
 def evaluate(expression: str) -> Optional[int]:
